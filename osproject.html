@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalable Thread Management Library UI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c3e50 100%);
+            color: #e0e0e0;
+        }
+        header {
+            background: linear-gradient(45deg, #007bff, #00c4ff);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-radius: 0 0 12px 12px;
+        }
+        header.dark-mode {
+            background: linear-gradient(45deg, #1a73e8, #2196f3);
+        }
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        nav.dark-mode {
+            background: rgba(30, 30, 30, 0.95);
+        }
+        nav a.btn-light {
+            border-radius: 20px;
+            padding: 8px 20px;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        nav a.btn-light:hover {
+            background: #007bff;
+            color: white;
+            transform: translateY(-2px);
+        }
+        nav.dark-mode a.btn-light {
+            background: #2c2c2c;
+            color: #ccc;
+        }
+        nav.dark-mode a.btn-light:hover {
+            background: #1a73e8;
+            color: white;
+        }
+        main {
+            padding: 30px;
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        .card.dark-mode {
+            background: #2c2c2c;
+            color: #ccc;
+        }
+        .btn {
+            border-radius: 20px;
+            padding: 8px 20px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .table {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .table thead {
+            background: #007bff;
+            color: white;
+        }
+        .table-striped tbody tr:nth-of-type(odd) {
+            background: rgba(0,123,255,0.05);
+        }
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .chart-container.dark-mode {
+            background: #2c2c2c;
+        }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .badge-waiting { background: #ffc107; }
+        .badge-executing { background: #28a745; }
+        .badge-completed { background: #17a2b8; }
+        .badge-timed-out { background: #dc3545; }
+        .badge-removed { background: #6c757d; }
+        .badge-idle { background: #6c757d; }
+        .badge-busy { background: #28a745; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        section {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Scalable Thread Management Library UI</h1>
+        <button onclick="startSimulation()" class="btn btn-success me-2 shadow">Start Simulation</button>
+        <button onclick="stopSimulation()" class="btn btn-danger shadow">Stop Simulation</button>
+    </header>
+    <nav>
+        <a href="#threads" class="btn btn-light shadow-sm">Threads</a>
+        <a href="#tasks" class="btn btn-light shadow-sm">Tasks</a>
+        <a href="#performance" class="btn btn-light shadow-sm">Performance</a>
+    </nav>
+    <main class="container">
+        <section id="threads">
+            <h2>Thread Management</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Thread ID</th>
+                        <th>Status</th>
+                        <th>Current Task</th>
+                    </tr>
+                </thead>
+                <tbody id="threads-table">
+                </tbody>
+            </table>
+        </section>
+        <section id="tasks">
+            <h2>Task Management</h2>
+            <form id="add-task-form" class="mb-4">
+                <div class="row g-3">
+                    <div class="col">
+                        <input type="number" class="form-control shadow-sm" id="task-priority" placeholder="Priority (1-10)" min="1" max="10">
+                    </div>
+                    <div class="col">
+                        <input type="number" class="form-control shadow-sm" id="task-timeout" placeholder="Timeout (s)" min="1">
+                    </div>
+                    <div class="col">
+                        <button type="submit" class="btn btn-primary shadow">Add Task</button>
+                    </div>
+                </div>
+            </form>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Task ID</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Creation Time</th>
+                        <th>Timeout (s)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tasks-table">
+                </tbody>
+            </table>
+        </section>
+        <section id="performance">
+            <h2>Performance Monitoring</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Metrics</h5>
+                            <p><strong>Total Tasks Completed:</strong> <span id="total-completed">0</span></p>
+                            <p><strong>Total Tasks Timed Out:</strong> <span id="total-timedout">0</span></p>
+                            <p><strong>Total Tasks Removed:</strong> <span id="total-removed">0</span></p>
+                            <p><strong>Current Queue Length:</strong> <span id="queue-length">0</span></p>
+                            <p><strong>Busy Workers:</strong> <span id="busy-workers">0</span></p>
+                            <p><strong>Average Execution Time:</strong> <span id="avg-execution-time">0s</span></p>
+                            <p><strong>Average Wait Time:</strong> <span id="avg-wait-time">0s</span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Queue Length Over Time</h5>
+                            <p class="card-text">Number of tasks waiting in the queue over time.</p>
+                            <div class="chart-container">
+                                <canvas id="queue-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Thread Activity Over Time</h5>
+                            <p class="card-text">Each line represents a thread's activity: 1 (Busy) or 0 (Idle) over time.</p>
+                            <div class="chart-container">
+                                <canvas id="activity-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script>
+        let workers = [
+            { id: 1, status: 'idle', currentTaskId: null },
+            { id: 2, status: 'idle', currentTaskId: null },
+            { id: 3, status: 'idle', currentTaskId: null }
+        ];
+
+        let allTasks = [];
+        let taskIdCounter = 1;
+        let totalCompleted = 0;
+        let totalTimedOut = 0;
+        let totalRemoved = 0;
+        let totalExecutionTime = 0;
+        let totalWaitTime = 0;
+        let queueHistory = [];
+        let threadHistories = [[], [], []];
+        let chart;
+        let activityChart;
+        let timeoutInterval;
+        let assignInterval;
+        let chartInterval;
+        let randomTaskInterval;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            function createGradient(ctx, chartArea, colors) {
+                const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                colors.forEach((color, index) => {
+                    gradient.addColorStop(index / (colors.length - 1), color);
+                });
+                return gradient;
+            }
+
+            let ctx = document.getElementById('queue-chart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Queue Length',
+                        data: [],
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#fff',
+                        tension: 0.5 // Increased for rollercoaster effect
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'linear', position: 'bottom', grid: { display: false } },
+                        y: { 
+                            beginAtZero: true, 
+                            suggestedMax: 10, // Allow for higher peaks
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
+                    }
+                },
+                plugins: [{
+                    id: 'customCanvasBackgroundColor',
+                    beforeDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const chartArea = chart.chartArea;
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'destination-over';
+                        ctx.fillStyle = document.body.classList.contains('dark-mode') ? '#2c2c2c' : '#ffffff';
+                        ctx.fillRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+                        ctx.restore();
+                    }
+                }]
+            });
+
+            chart.options.onDraw = function() {
+                const chartArea = chart.chartArea;
+                chart.data.datasets[0].borderColor = createGradient(ctx, chartArea, ['#007bff', '#00c4ff']);
+            };
+
+            let ctx2 = document.getElementById('activity-chart').getContext('2d');
+            activityChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Thread 1', data: [], borderWidth: 3, pointRadius: 5, pointBackgroundColor: '#fff', tension: 0.3 },
+                        { label: 'Thread 2', data: [], borderWidth: 3, pointRadius: 5, pointBackgroundColor: '#fff', tension: 0.3 },
+                        { label: 'Thread 3', data: [], borderWidth: 3, pointRadius: 5, pointBackgroundColor: '#fff', tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'linear', position: 'bottom', grid: { display: false } },
+                        y: { 
+                            min: 0, 
+                            max: 1, 
+                            ticks: { stepSize: 1 }, 
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
+                    }
+                },
+                plugins: [{
+                    id: 'customCanvasBackgroundColor',
+                    beforeDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const chartArea = chart.chartArea;
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'destination-over';
+                        ctx.fillStyle = document.body.classList.contains('dark-mode') ? '#2c2c2c' : '#ffffff';
+                        ctx.fillRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+                        ctx.restore();
+                    }
+                }]
+            });
+
+            activityChart.options.onDraw = function() {
+                const chartArea = activityChart.chartArea;
+                activityChart.data.datasets[0].borderColor = createGradient(ctx2, chartArea, ['#ff6b6b', '#ff8e53']);
+                activityChart.data.datasets[1].borderColor = createGradient(ctx2, chartArea, ['#4facfe', '#00f2fe']);
+                activityChart.data.datasets[2].borderColor = createGradient(ctx2, chartArea, ['#43e97b', '#38f9d7']);
+            };
+
+            updateThreadsTable();
+            updateTasksTable();
+            updatePerformance();
+        });
+
+        function startSimulation() {
+            timeoutInterval = setInterval(checkTimeouts, 1000);
+            assignInterval = setInterval(assignTasks, 1000);
+            chartInterval = setInterval(updateCharts, 1000);
+            randomTaskInterval = setInterval(addRandomTasks, 3000); // Add random tasks every 3 seconds
+        }
+
+        function stopSimulation() {
+            clearInterval(timeoutInterval);
+            clearInterval(assignInterval);
+            clearInterval(chartInterval);
+            clearInterval(randomTaskInterval);
+        }
+
+        function addRandomTasks() {
+          
+            const numTasks = Math.floor(Math.random() * 4);
+            for (let i = 0; i < numTasks; i++) {
+                let newTask = {
+                    id: taskIdCounter++,
+                    priority: Math.floor(Math.random() * 10) + 1,
+                    creationTime: Date.now(),
+                    timeout: (Math.floor(Math.random() * 10) + 5) * 1000, // 5-15s timeout
+                    status: 'waiting'
+                };
+                allTasks.push(newTask);
+            }
+            updateTasksTable();
+            updatePerformance();
+        }
+
+        function checkTimeouts() {
+            const now = Date.now();
+            allTasks.forEach(task => {
+                if (task.status === 'waiting' && now - task.creationTime > task.timeout) {
+                    task.status = 'timed out';
+                    totalTimedOut++;
+                    updateTasksTable();
+                    updatePerformance();
+                }
+            });
+            checkSimulationEnd();
+        }
+
+        function assignTasks() {
+            let waitingTasks = allTasks.filter(task => task.status === 'waiting').sort((a, b) => b.priority - a.priority);
+            let idleWorkers = workers.filter(worker => worker.status === 'idle');
+            for (let i = 0; i < Math.min(waitingTasks.length, idleWorkers.length); i++) {
+                let task = waitingTasks[i];
+                let worker = idleWorkers[i];
+                task.status = 'executing';
+                task.startTime = Date.now();
+                worker.status = 'busy';
+                worker.currentTaskId = task.id;
+                let executionTime = 3000 + Math.random() * 7000; // 3-10 seconds
+                setTimeout(() => {
+                    task.status = 'completed';
+                    task.endTime = Date.now();
+                    let execTime = task.endTime - task.startTime;
+                    totalExecutionTime += execTime;
+                    let waitTime = task.startTime - task.creationTime;
+                    totalWaitTime += waitTime;
+                    totalCompleted++;
+                    worker.status = 'idle';
+                    worker.currentTaskId = null;
+                    updateTasksTable();
+                    updateThreadsTable();
+                    updatePerformance();
+                    checkSimulationEnd();
+                }, executionTime);
+            }
+            updateTasksTable();
+            updateThreadsTable();
+            updatePerformance();
+        }
+
+        function checkSimulationEnd() {
+            const activeTasks = allTasks.filter(task => task.status === 'waiting' || task.status === 'executing').length;
+            if (activeTasks === 0 && allTasks.length > 0) {
+                stopSimulation();
+                alert('Simulation completed: All tasks processed!');
+            }
+        }
+
+        document.getElementById('add-task-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let priority = document.getElementById('task-priority').value;
+            let timeout = document.getElementById('task-timeout').value;
+            if (priority && timeout) {
+                let newTask = {
+                    id: taskIdCounter++,
+                    priority: parseInt(priority),
+                    creationTime: Date.now(),
+                    timeout: parseInt(timeout) * 1000,
+                    status: 'waiting'
+                };
+                allTasks.push(newTask);
+                updateTasksTable();
+                updatePerformance();
+                document.getElementById('task-priority').value = '';
+                document.getElementById('task-timeout').value = '';
+            }
+        });
+
+        function updateTasksTable() {
+            let tableBody = document.getElementById('tasks-table');
+            tableBody.innerHTML = '';
+            allTasks.forEach(task => {
+                let row = tableBody.insertRow();
+                row.insertCell().textContent = task.id;
+                row.insertCell().textContent = task.priority;
+                let statusCell = row.insertCell();
+                statusCell.innerHTML = `<span class="badge badge-${task.status.replace(' ', '-')}">${task.status}</span>`;
+                row.insertCell().textContent = new Date(task.creationTime).toLocaleTimeString();
+                row.insertCell().textContent = (task.timeout / 1000).toFixed(0);
+                let actionCell = row.insertCell();
+                if (task.status === 'waiting') {
+                    let removeBtn = document.createElement('button');
+                    removeBtn.className = 'btn btn-danger btn-sm shadow-sm';
+                    removeBtn.textContent = 'Remove';
+                    removeBtn.onclick = () => {
+                        task.status = 'removed';
+                        totalRemoved++;
+                        updateTasksTable();
+                        updatePerformance();
+                        checkSimulationEnd();
+                    };
+                    actionCell.appendChild(removeBtn);
+                }
+            });
+        }
+
+        function updateThreadsTable() {
+            let tableBody = document.getElementById('threads-table');
+            tableBody.innerHTML = '';
+            workers.forEach(worker => {
+                let row = tableBody.insertRow();
+                row.insertCell().textContent = worker.id;
+                let statusCell = row.insertCell();
+                statusCell.innerHTML = `<span class="badge badge-${worker.status}">${worker.status}</span>`;
+                row.insertCell().textContent = worker.currentTaskId || 'None';
+            });
+        }
+
+        function updatePerformance() {
+            document.getElementById('total-completed').textContent = totalCompleted;
+            document.getElementById('total-timedout').textContent = totalTimedOut;
+            document.getElementById('total-removed').textContent = totalRemoved;
+            document.getElementById('queue-length').textContent = allTasks.filter(task => task.status === 'waiting').length;
+            document.getElementById('busy-workers').textContent = workers.filter(worker => worker.status === 'busy').length;
+
+            let avgExecutionTime = totalCompleted > 0 ? totalExecutionTime / totalCompleted / 1000 : 0;
+            document.getElementById('avg-execution-time').textContent = `${avgExecutionTime.toFixed(2)}s`;
+
+            let avgWaitTime = totalCompleted > 0 ? totalWaitTime / totalCompleted / 1000 : 0;
+            document.getElementById('avg-wait-time').textContent = `${avgWaitTime.toFixed(2)}s`;
+        }
+
+        function updateCharts() {
+            let now = Date.now();
+            queueHistory.push(allTasks.filter(task => task.status === 'waiting').length);
+            if (queueHistory.length > 30) queueHistory.shift(); 
+
+            threadHistories.forEach((history, i) => {
+                history.push(workers[i].status === 'busy' ? 1 : 0);
+                if (history.length > 30) history.shift();
+            });
+
+            chart.data.labels = [...Array(queueHistory.length).keys()];
+            chart.data.datasets[0].data = queueHistory;
+            chart.update();
+
+            activityChart.data.labels = [...Array(queueHistory.length).keys()];
+            activityChart.data.datasets[0].data = threadHistories[0];
+            activityChart.data.datasets[1].data = threadHistories[1];
+            activityChart.data.datasets[2].data = threadHistories[2];
+            activityChart.update();
+        }
+    </script>
+</body>
+</html>
